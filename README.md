@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 <img src="https://img.shields.io/badge/C%2B%2B-17-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" />
 <img src="https://img.shields.io/badge/Deep_Learning-From_Scratch-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white" />
@@ -487,4 +487,4 @@ Educational and research use. Built to demonstrate that deep learning is enginee
 **GradientX** — Where every gradient is earned, not borrowed.
 
 </div>
-]]>
+
