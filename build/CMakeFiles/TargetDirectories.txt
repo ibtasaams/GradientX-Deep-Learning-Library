@@ -1,0 +1,7 @@
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/deeplearn.dir
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/edit_cache.dir
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/rebuild_cache.dir
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/list_install_components.dir
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/install.dir
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/install/local.dir
+C:/Users/Ibtasaam Abbasi/Documents/NUST - Electrical Engineering/Semester 2/Computer Programming/Final Project/cp final/build/CMakeFiles/install/strip.dir

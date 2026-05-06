@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GradientX — MNIST Deep Learning Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--card:#1a1a2e;--border:#2a2a3e;
+  --text:#e0e0f0;--dim:#6a6a8a;--accent:#6c5ce7;--accent2:#00cec9;
+  --green:#00b894;--red:#d63031;--yellow:#fdcb6e;
+  --glow:rgba(108,92,231,0.3);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.grain{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.03;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");z-index:9999}
+
+header{text-align:center;padding:40px 20px 20px;position:relative}
+header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:200px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.logo{font-size:42px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px}
+.subtitle{color:var(--dim);font-size:14px;margin-top:6px;font-weight:300;letter-spacing:2px;text-transform:uppercase}
+
+.container{max-width:1200px;margin:0 auto;padding:30px 20px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:border-color 0.3s}
+.card:hover{border-color:var(--accent)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(108,92,231,0.4),transparent)}
+.card-title{font-size:13px;text-transform:uppercase;letter-spacing:2px;color:var(--accent);font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* Digit grid */
+#digit-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.digit-thumb{width:100%;aspect-ratio:1;cursor:pointer;border-radius:6px;border:2px solid transparent;transition:all 0.2s;image-rendering:pixelated;background:#000}
+.digit-thumb:hover{border-color:var(--accent);transform:scale(1.1);z-index:2;box-shadow:0 0 12px var(--glow)}
+.digit-thumb.active{border-color:var(--accent2);box-shadow:0 0 16px rgba(0,206,201,0.4)}
+
+/* Main display */
+#main-canvas-wrap{text-align:center;margin-bottom:16px}
+#main-canvas{width:224px;height:224px;border-radius:12px;border:2px solid var(--border);image-rendering:pixelated;background:#000}
+#digit-label{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--dim);margin-top:8px}
+
+/* Prediction result */
+#prediction-result{text-align:center;margin-bottom:20px}
+#pred-digit{font-size:72px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1}
+#pred-status{font-size:14px;margin-top:4px;font-weight:600}
+.correct{color:var(--green)}.wrong{color:var(--red)}
+
+/* Confidence bars */
+.conf-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;font-size:12px}
+.conf-label{width:16px;text-align:right;color:var(--dim);font-weight:600}
+.conf-track{flex:1;height:22px;background:var(--surface);border-radius:4px;overflow:hidden;position:relative}
+.conf-fill{height:100%;border-radius:4px;transition:width 0.6s cubic-bezier(0.25,0.8,0.25,1);position:relative}
+.conf-fill.top{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.conf-fill.normal{background:var(--border)}
+.conf-pct{width:50px;text-align:right;color:var(--dim);font-size:11px}
+
+/* Architecture section */
+.arch-section{margin-top:24px}
+.arch-flow{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:16px 0}
+.arch-node{padding:8px 14px;border-radius:8px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;text-align:center;border:1px solid var(--border);background:var(--surface);transition:all 0.3s}
+.arch-node.active{border-color:var(--accent);box-shadow:0 0 12px var(--glow);background:rgba(108,92,231,0.1)}
+.arch-node.input-n{border-color:#e17055;color:#e17055}
+.arch-node.hidden-n{border-color:var(--accent);color:var(--accent)}
+.arch-node.output-n{border-color:var(--accent2);color:var(--accent2)}
+.arch-arrow{color:var(--dim);font-size:16px}
+
+/* How it works */
+.step-list{counter-reset:steps}
+.step-item{counter-increment:steps;padding:12px 16px;border-left:2px solid var(--border);margin-left:12px;margin-bottom:8px;position:relative;font-size:13px;color:var(--dim);transition:all 0.3s}
+.step-item::before{content:counter(steps);position:absolute;left:-14px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--surface);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dim)}
+.step-item.active{border-left-color:var(--accent);color:var(--text)}
+.step-item.active::before{border-color:var(--accent);color:var(--accent);background:rgba(108,92,231,0.15)}
+.step-item.done{border-left-color:var(--green)}
+.step-item.done::before{border-color:var(--green);color:var(--green);background:rgba(0,184,148,0.15)}
+
+/* Loading state */
+#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity 0.5s}
+#loading.hidden{opacity:0;pointer-events:none}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#load-text{margin-top:16px;color:var(--dim);font-size:13px}
+
+/* Stats row */
+.stats{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.stat{flex:1;min-width:100px;background:var(--surface);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.stat-val.accent{color:var(--accent)}
+.stat-val.green{color:var(--green)}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin-top:2px}
+
+/* Navigation arrows */
+.nav-row{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.nav-btn{padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;transition:all 0.2s}
+.nav-btn:hover{border-color:var(--accent);background:rgba(108,92,231,0.1)}
+#idx-display{font-family:'JetBrains Mono',monospace;color:var(--accent);padding:8px 12px;font-size:13px}
+
+/* Random test button */
+.action-btn{padding:10px 24px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),#5f3dc4);color:#fff;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;transition:all 0.2s;letter-spacing:0.5px}
+.action-btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px var(--glow)}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div id="load-text">Loading neural network data...</div>
+</div>
+
+<header>
+  <div class="logo">GradientX</div>
+  <div class="subtitle">Deep Learning Library — MNIST Digit Recognition Demo</div>
+</header>
+
+<div class="container">
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="stat-val accent">784</div><div class="stat-label">Input Neurons</div></div>
+    <div class="stat"><div class="stat-val accent">16</div><div class="stat-label">Hidden Neurons</div></div>
+    <div class="stat"><div class="stat-val accent">10</div><div class="stat-label">Output Classes</div></div>
+    <div class="stat"><div class="stat-val green" id="accuracy-stat">—</div><div class="stat-label">Test Accuracy</div></div>
+  </div>
+
+  <div class="grid">
+    <!-- Left: Image & Grid -->
+    <div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Select a Test Image</div>
+        <div id="digit-grid"></div>
+        <div class="nav-row">
+          <button class="nav-btn" onclick="prevPage()">← Prev</button>
+          <span id="idx-display">1-100</span>
+          <button class="nav-btn" onclick="nextPage()">Next →</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:24px">
+        <div class="card-title"><span class="dot"></span> Selected Digit</div>
+        <div id="main-canvas-wrap">
+          <canvas id="main-canvas" width="28" height="28"></canvas>
+          <div id="digit-label">Click a digit above to begin</div>
+        </div>
+        <div style="text-align:center"><button class="action-btn" onclick="randomTest()">🎲 Random Prediction</button></div>
+      </div>
+    </div>
+
+    <!-- Right: Prediction -->
+    <div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> Neural Network Prediction</div>
+        <div id="prediction-result">
+          <div id="pred-digit">?</div>
+          <div id="pred-status" style="color:var(--dim)">Waiting for input...</div>
+        </div>
+        <div id="confidence-bars"></div>
+      </div>
+      <div class="card" style="margin-top:24px">
+        <div class="card-title"><span class="dot"></span> How It Works — Forward Pass</div>
+        <div class="arch-flow">
+          <div class="arch-node input-n" id="an-input">Input<br>784×1</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node hidden-n" id="an-d0">Dense<br>16×784</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node hidden-n" id="an-r0">ReLU</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node hidden-n" id="an-d1">Residual<br>16×16</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node hidden-n" id="an-r1">ReLU+Skip</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node output-n" id="an-d2">Dense<br>10×16</div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node output-n" id="an-sm">Softmax</div>
+        </div>
+        <div class="step-list" id="step-list">
+          <div class="step-item" id="st-0">Flatten 28×28 image into 784-dimensional vector</div>
+          <div class="step-item" id="st-1">Multiply by W₀ (16×784) + bias₀ → 16 activations</div>
+          <div class="step-item" id="st-2">Apply ReLU: max(0, x) for non-linearity</div>
+          <div class="step-item" id="st-3">Residual block: W₁×a₀ + bias₁ → ReLU → add skip connection</div>
+          <div class="step-item" id="st-4">Final layer: W₂×a₁ + bias₂ → 10 raw scores</div>
+          <div class="step-item" id="st-5">Softmax: convert scores to probabilities (sum = 1.0)</div>
+          <div class="step-item" id="st-6">Argmax: highest probability = predicted digit</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="web_data.js"></script>
+<script>
+// ── Neural network inference in pure JavaScript ──────────────────────────────
+function matmul(outR, outC, A, B, bRows, bCols) {
+  const out = new Float32Array(outR * outC);
+  for (let i = 0; i < outR; i++)
+    for (let k = 0; k < bRows; k++)
+      for (let j = 0; j < outC; j++)
+        out[j + i * outC] += A[k + i * bRows] * B[j + k * bCols];
+  return out;
+}
+function vecAdd(a, b) {
+  const out = new Float32Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] + b[i];
+  return out;
+}
+function relu(x) {
+  const out = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) out[i] = Math.max(0, x[i]);
+  return out;
+}
+function softmax(x) {
+  const out = new Float32Array(x.length);
+  let maxVal = -Infinity;
+  for (let i = 0; i < x.length; i++) if (x[i] > maxVal) maxVal = x[i];
+  let sum = 0;
+  for (let i = 0; i < x.length; i++) { out[i] = Math.exp(x[i] - maxVal); sum += out[i]; }
+  for (let i = 0; i < x.length; i++) out[i] /= sum;
+  return out;
+}
+function argmax(x) {
+  let best = 0;
+  for (let i = 1; i < x.length; i++) if (x[i] > x[best]) best = i;
+  return best;
+}
+
+function predict(input) {
+  // Layer 0: Dense(16,784) + bias + ReLU
+  let z0 = matmul(W0_ROWS, 1, W0_DATA, input, W0_COLS, 1);
+  z0 = vecAdd(z0, B0_DATA);
+  const a0 = relu(z0);
+  // Layer 1: Dense(16,16) + bias + ReLU + skip
+  let z1 = matmul(W1_ROWS, 1, W1_DATA, a0, W1_COLS, 1);
+  z1 = vecAdd(z1, B1_DATA);
+  const z1r = relu(z1);
+  const a1 = vecAdd(a0, z1r);
+  // Layer 2: Dense(10,16) + bias + Softmax
+  let z2 = matmul(W2_ROWS, 1, W2_DATA, a1, W2_COLS, 1);
+  z2 = vecAdd(z2, B2_DATA);
+  return softmax(z2);
+}
+
+// ── Image helpers ────────────────────────────────────────────────────────────
+function getImage(idx) {
+  return MNIST_IMAGES_FLAT.slice(idx * 784, (idx + 1) * 784);
+}
+
+function drawDigit(canvas, pixels, size) {
+  canvas.width = 28; canvas.height = 28;
+  canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(28, 28);
+  for (let i = 0; i < 784; i++) {
+    const v = Math.round(pixels[i] * 255);
+    img.data[i*4] = v; img.data[i*4+1] = v; img.data[i*4+2] = v; img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// ── UI State ─────────────────────────────────────────────────────────────────
+let currentPage = 0;
+const PAGE_SIZE = 100;
+let selectedIdx = -1;
+let totalCorrect = 0;
+let totalTested = 0;
+
+function buildGrid() {
+  const grid = document.getElementById('digit-grid');
+  grid.innerHTML = '';
+  const start = currentPage * PAGE_SIZE;
+  const end = Math.min(start + PAGE_SIZE, NUM_SAMPLES);
+  for (let i = start; i < end; i++) {
+    const c = document.createElement('canvas');
+    c.className = 'digit-thumb';
+    c.dataset.idx = i;
+    drawDigit(c, getImage(i), 40);
+    c.onclick = () => selectDigit(i);
+    grid.appendChild(c);
+  }
+  document.getElementById('idx-display').textContent = `${start+1}-${end}`;
+}
+
+function prevPage() { if (currentPage > 0) { currentPage--; buildGrid(); } }
+function nextPage() { if ((currentPage+1)*PAGE_SIZE < NUM_SAMPLES) { currentPage++; buildGrid(); } }
+
+function animateSteps(callback) {
+  const nodes = ['an-input','an-d0','an-r0','an-d1','an-r1','an-d2','an-sm'];
+  const steps = ['st-0','st-1','st-2','st-3','st-4','st-5','st-6'];
+  // Reset
+  nodes.forEach(id => document.getElementById(id).classList.remove('active'));
+  steps.forEach(id => { const el = document.getElementById(id); el.classList.remove('active','done'); });
+
+  let i = 0;
+  function next() {
+    if (i > 0) {
+      document.getElementById(nodes[i-1]).classList.remove('active');
+      document.getElementById(steps[i-1]).classList.remove('active');
+      document.getElementById(steps[i-1]).classList.add('done');
+    }
+    if (i < nodes.length) {
+      document.getElementById(nodes[i]).classList.add('active');
+      document.getElementById(steps[i]).classList.add('active');
+      i++;
+      setTimeout(next, 250);
+    } else {
+      if (callback) callback();
+    }
+  }
+  next();
+}
+
+function selectDigit(idx) {
+  selectedIdx = idx;
+  // Highlight in grid
+  document.querySelectorAll('.digit-thumb').forEach(c => c.classList.remove('active'));
+  const thumb = document.querySelector(`.digit-thumb[data-idx="${idx}"]`);
+  if (thumb) thumb.classList.add('active');
+
+  // Draw large
+  const mainCanvas = document.getElementById('main-canvas');
+  drawDigit(mainCanvas, getImage(idx), 224);
+  document.getElementById('digit-label').textContent = `Test image #${idx} — True label: ${MNIST_LABELS[idx]}`;
+
+  // Animate forward pass then show prediction
+  animateSteps(() => {
+    const probs = predict(getImage(idx));
+    const pred = argmax(probs);
+    const actual = MNIST_LABELS[idx];
+    const correct = pred === actual;
+
+    totalTested++;
+    if (correct) totalCorrect++;
+
+    // Show prediction
+    document.getElementById('pred-digit').textContent = pred;
+    const statusEl = document.getElementById('pred-status');
+    statusEl.textContent = correct ? `✓ Correct! (True: ${actual})` : `✗ Wrong — Predicted ${pred}, True: ${actual}`;
+    statusEl.className = correct ? 'correct' : 'wrong';
+
+    // Update accuracy
+    document.getElementById('accuracy-stat').textContent = 
+      totalTested > 0 ? `${(totalCorrect/totalTested*100).toFixed(1)}%` : '—';
+
+    // Confidence bars
+    const barsEl = document.getElementById('confidence-bars');
+    barsEl.innerHTML = '';
+    for (let d = 0; d < 10; d++) {
+      const pct = (probs[d] * 100);
+      const isTop = d === pred;
+      barsEl.innerHTML += `
+        <div class="conf-bar">
+          <span class="conf-label">${d}</span>
+          <div class="conf-track">
+            <div class="conf-fill ${isTop ? 'top' : 'normal'}" style="width:0%"></div>
+          </div>
+          <span class="conf-pct">${pct.toFixed(1)}%</span>
+        </div>`;
+    }
+    // Animate bars
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        barsEl.querySelectorAll('.conf-fill').forEach((el, d) => {
+          el.style.width = (probs[d] * 100) + '%';
+        });
+      });
+    });
+  });
+}
+
+function randomTest() {
+  const idx = Math.floor(Math.random() * NUM_SAMPLES);
+  // Ensure correct page is shown
+  const page = Math.floor(idx / PAGE_SIZE);
+  if (page !== currentPage) { currentPage = page; buildGrid(); }
+  selectDigit(idx);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Quick test that data loaded
+  if (typeof NUM_SAMPLES === 'undefined') {
+    document.getElementById('load-text').textContent = 
+      'Error: web_data.js not found. Run export_web_data.py first.';
+    return;
+  }
+  buildGrid();
+  document.getElementById('loading').classList.add('hidden');
+
+  // Auto-run first prediction
+  setTimeout(() => selectDigit(0), 500);
+});
+</script>
+</body>
+</html>
